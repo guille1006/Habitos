@@ -1,0 +1,1 @@
+adsadsa adwd awdawdawdawdawd awda wdaddawd a wadddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddCuando recibes un evento de Flet, el valor que te interesa suele estar en event.control.value o event.data.   

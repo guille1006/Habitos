@@ -1,0 +1,28 @@
+Componentes de UI reutilizables (components/)
+
+habit_card.py — tarjeta individual de un hábito, muestra nombre, icono, racha y el check de hoy
+habit_form.py — formulario para crear/editar un hábito (nombre, frecuencia, color, icono)
+progress_ring.py — círculo de progreso visual (% de hábitos completados hoy)
+streak_badge.py — badge que muestra la racha de días consecutivos
+empty_state.py — pantalla vacía cuando no hay hábitos creados todavía
+confirm_dialog.py — diálogo de confirmación reutilizable (para borrar hábitos, etc.)
+navbar.py — barra de navegación inferior entre las vistas
+
+Vistas (views/)
+
+home_view.py — vista principal con la lista de hábitos del día de hoy
+stats_view.py — estadísticas y calendario de cumplimiento por hábito
+add_edit_view.py — pantalla para crear o editar un hábito (reutiliza habit_form)
+settings_view.py — ajustes de la app (tema, notificaciones, etc.)
+
+Servicios (services/)
+
+habit_service.py — lógica CRUD de hábitos (crear, leer, actualizar, borrar)
+storage_service.py — abstracción para guardar y leer datos localmente (JSON o SQLite)
+stats_service.py — cálculo de rachas, porcentajes y datos para las estadísticas
+
+Utilidades (utils/)
+
+theme.py — colores, tipografía y tema general de la app
+constants.py — frecuencias posibles, iconos disponibles, límites, etc.
+date_helpers.py — funciones para manejar fechas (semana actual, comparar días, etc.)
