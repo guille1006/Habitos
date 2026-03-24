@@ -177,7 +177,8 @@ class HabitCard(ft.Container):
         self.gesture = ft.GestureDetector(
             content=self._card_container,
             on_horizontal_drag_update=self._on_drag_update,
-            on_horizontal_drag_end=self._on_drag_end
+            on_horizontal_drag_end=self._on_drag_end,
+            mouse_cursor=ft.MouseCursor.MOVE
         )
 
         return ft.Stack(

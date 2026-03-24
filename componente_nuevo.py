@@ -1,208 +1,169 @@
 import flet as ft
-class HabitCard(ft.Container):
-    def __init__(
-        self,
-        name: str,
-        icon: str,
-        streak: int,
-        frequency: str,
-        reminder_time: str | None,
-        color: str = ft.Colors.BLUE,
-        completed: bool = False,
-        on_complete=None,
-        on_edit=None,
-    ):
-        super().__init__(...)
-        self.name = name
-        self.icon = icon
-        self.streak = streak
-        self.frequency = frequency
-        self.reminder_time = reminder_time
-        self.color = color
-        self.completed = completed
-        self.on_complete = on_complete
-        self.on_edit = on_edit
+import asyncio
+import threading
 
-        self._drag_offset = 0.0
-        self._SWIPE_THRESHOLD = 80      # px para confirmar completado
-        self._EDIT_THRESHOLD = -60      # px para revelar editar
 
-    # ── Drag handlers ──────────────────────────────────────────
+def show_toast(page: ft.Page, message: str, duration: int = 10):
+    """
+    Muestra una ventana flotante que aparece desde abajo y se disipa sola.
 
-    def _on_drag_update(self, e: ft.DragUpdateEvent):
-        # Limita el arrastre: derecha hasta 120px, izquierda hasta -80px
-        self._drag_offset += e.local_delta.x
-        self._drag_offset = max(-80, min(120, self._drag_offset))
-        self._card_container.offset = ft.Offset(
-            self._drag_offset / 400, 0
-        )
-        self._update_background_hint()
-        self.gesture.update()
+    Args:
+        page: La instancia de ft.Page
+        message: El texto a mostrar en el toast
+        duration: Segundos antes de desaparecer (default: 10)
+    """
 
-    def _on_drag_end(self, e: ft.DragEndEvent):
-        if self._drag_offset >= self._SWIPE_THRESHOLD:
-            print("Completado")
-        elif self._drag_offset <= self._EDIT_THRESHOLD:
-            print("Editar")
-
-        # Vuelve a la posición original
-        self._drag_offset = 0.0
-        self._card_container.offset = ft.Offset(0, 0)
-        self._bg_right.opacity = 0
-        self._bg_left.opacity = 0
-        self.gesture.update()
-
-    def _update_background_hint(self):
-        # Fondo verde al deslizar derecha
-        self._bg_right.opacity = min(1.0, self._drag_offset / self._SWIPE_THRESHOLD) if self._drag_offset > 0 else 0
-        # Fondo naranja al deslizar izquierda
-        self._bg_left.opacity = min(1.0, abs(self._drag_offset) / abs(self._EDIT_THRESHOLD)) if self._drag_offset < 0 else 0
-
-    # ── Build ──────────────────────────────────────────────────
-    def build(self):
-        # Fondo que aparece al deslizar a la derecha (completar)
-        self._bg_right = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, color=ft.Colors.WHITE, size=28),
-                    ft.Text("Completado", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                ],
-                spacing=8,
-            ),
-            bgcolor=ft.Colors.GREEN_400,
-            border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=20),
-            alignment=ft.Alignment(-1, 0),
-            opacity=0,
-            animate_opacity=150,
-        )
-
-        # Fondo que aparece al deslizar a la izquierda (editar)
-        self._bg_left = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text("Editar", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                    ft.Icon(ft.Icons.EDIT_ROUNDED, color=ft.Colors.WHITE, size=28),
-                ],
-                spacing=8,
-                alignment=ft.MainAxisAlignment.END,
-            ),
-            bgcolor=ft.Colors.ORANGE_400,
-            border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=20),
-            alignment=ft.Alignment(1, 0),
-            opacity=0,
-            animate_opacity=150,
-        )
-        # Contenido principal de la tarjeta
-        icon_container = ft.Container(
-            content=ft.Text(self.icon, size=28),
-            bgcolor=ft.Colors.with_opacity(0.15, self.color),
-            border_radius=12,
-            width=52,
-            height=52,
-            alignment=ft.Alignment(0, 0),
-        )
-
-        streak_badge = ft.Row(
+    toast = ft.Container(
+        content=ft.Row(
             controls=[
-                ft.Icon(ft.Icons.LOCAL_FIRE_DEPARTMENT_ROUNDED, color=ft.Colors.ORANGE_400, size=14),
-                ft.Text(f"{self.streak} días", size=12, color=ft.Colors.SECONDARY),
-            ],
-            spacing=2,
-        )
-
-        frequency_badge = ft.Container(
-            content=ft.Text(self.frequency, size=11, color=self.color, weight=ft.FontWeight.W_500),
-            bgcolor=ft.Colors.with_opacity(0.12, self.color),
-            border_radius=20,
-            padding=ft.Padding.symmetric(horizontal=8, vertical=2),
-        )
-
-        reminder_row = ft.Row(
-            controls=[
-                ft.Icon(ft.Icons.NOTIFICATIONS_NONE_ROUNDED, size=12, color=ft.Colors.SECONDARY),
-                ft.Text(self.reminder_time, size=11, color=ft.Colors.SECONDARY),
-            ],
-            spacing=4,
-            visible=self.reminder_time is not None,
-        )
-
-        info_column = ft.Column(
-            controls=[
+                ft.Icon(ft.Icons.NOTIFICATIONS_ROUNDED, color="#FFFFFF", size=20),
                 ft.Text(
-                    self.name,
-                    size=15,
-                    weight=ft.FontWeight.W_600,
-                    color=ft.Colors.ON_SURFACE,
+                    message,
+                    color="#FFFFFF",
+                    size=14,
+                    weight=ft.FontWeight.W_500,
+                    max_lines=2,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    expand=True,
                 ),
-                ft.Row(controls=[streak_badge, frequency_badge], spacing=8),
-                reminder_row,
+                ft.IconButton(
+                    icon=ft.Icons.CLOSE_ROUNDED,
+                    icon_color="#FFFFFF80",
+                    icon_size=16,
+                    on_click=lambda e: dismiss_toast(),
+                    tooltip="Cerrar",
+                    style=ft.ButtonStyle(
+                        padding=ft.Padding.all(4),
+                        overlay_color=ft.Colors.with_opacity(0.1, "#FFFFFF"),
+                    ),
+                ),
             ],
-            spacing=4,
-            expand=True,
-        )
-
-        check_icon = ft.Icon(
-            ft.Icons.CHECK_CIRCLE_ROUNDED if self.completed else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
-            color=self.color if self.completed else ft.Colors.with_opacity(0.3, ft.Colors.ON_SURFACE),
-            size=26
-        )
-
-        card_content = ft.Container(
-            content=ft.Row(
-                controls=[icon_container, info_column, check_icon],
-                spacing=14,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            bgcolor=ft.Colors.with_opacity(0.05 if self.completed else 0, ft.Colors.ON_SURFACE)
-            if self.completed
-            else ft.Colors.SURFACE,
-            border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=16, vertical=14),
-            border=ft.Border.all(
-                1,
-                ft.Colors.with_opacity(0.3, self.color) if self.completed else ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
-            ),
-            animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT)
-        )
-
-        self._card_container = ft.Container(
-            content=card_content,
-            offset=ft.Offset(0, 0),
-            animate_offset=ft.Animation(300, ft.AnimationCurve.EASE_OUT)
-        )
-
-        self.gesture = ft.GestureDetector(
-            content=self._card_container,
-            on_horizontal_drag_update=self._on_drag_update,
-            on_horizontal_drag_end=self._on_drag_end
-        )
-
-        return ft.Stack(
-            controls=[self._bg_right, self._bg_left, self.gesture],
-            height=84,
-        )
-    
-
-def main(page: ft.Page) -> None:
-    page.title = "Keyboard"
-    page.spacing = 30 
-    page.vertical_alignment = "center"
-    page.horizontal_alignment = "center"
-    page.bgcolor = "white"
-
-    calendario = HabitCard(
-        name="Meditar",
-        icon="🧘",
-        streak=12,
-        frequency="Diario",
-        reminder_time="08:00",
-        color=ft.Colors.PURPLE_400,
-        on_complete=lambda completed: print(f"Completado: {completed}"),
-        on_edit=lambda: print("Abrir edición"),
+            spacing=12,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        bgcolor="#1C1C2E",
+        border_radius=ft.BorderRadius.all(14),
+        padding=ft.Padding.symmetric(horizontal=18, vertical=14),
+        shadow=ft.BoxShadow(
+            spread_radius=0,
+            blur_radius=24,
+            color=ft.Colors.with_opacity(0.35, "#000000"),
+            offset=ft.Offset(0, 8),
+        ),
+        border=ft.Border.all(1, "#FFFFFF15"),
+        width=360,
+        opacity=0,
+        offset=ft.Offset(0, 0.5),
+        animate_opacity=ft.Animation(400, ft.AnimationCurve.EASE_OUT),
     )
-    page.add(calendario.build())
 
-if __name__ == "__main__":
-    ft.run(main, view=ft.AppView.WEB_BROWSER)
+    progress_bar = ft.ProgressBar(
+        value=1.0,
+        color="#6C63FF",
+        bgcolor="#FFFFFF15",
+        height=3,
+        border_radius=ft.BorderRadius.only(bottom_left=14, bottom_right=14),
+        width=360,
+    )
+
+    overlay = ft.Container(
+        content=ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Column(controls=[toast, progress_bar], spacing=0, tight=True)
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=ft.Padding.only(bottom=32),
+            alignment=ft.Alignment.BOTTOM_CENTER,
+            expand=True,
+        ),
+        expand=True,
+    )
+
+    dismissed = False
+
+    async def dismiss_toast():
+        nonlocal dismissed
+        if dismissed:
+            return
+        dismissed = True
+ 
+        toast.opacity = 0
+        toast.offset = ft.transform.Offset(0, 0.5)
+        progress_bar.opacity = 0
+        await page.update_async()
+ 
+        await asyncio.sleep(0.45)
+ 
+        if overlay in page.overlay:
+            page.overlay.remove(overlay)
+            await page.update_async()
+
+        # Asignar el botón de cerrar aquí para capturar dismiss_toast en el closure
+        toast.content.controls[2].on_click = lambda e: asyncio.ensure_future(dismiss_toast())
+    
+        page.overlay.append(overlay)
+        await page.update_async()
+    
+        # Pequeño delay para que el frame inicial se pinte antes de animar
+        await asyncio.sleep(0.05)
+    
+        # Animar entrada
+        toast.opacity = 1
+        toast.offset = ft.transform.Offset(0, 0)
+        progress_bar.value = 0
+        await page.update_async()
+    
+        # Esperar la duración y luego desaparecer
+        await asyncio.sleep(duration)
+        await dismiss_toast()
+
+
+# ─── Demo ────────────────────────────────────────────────────────────────────
+
+async def main(page: ft.Page):
+    page.title = "Toast Flotante"
+    page.bgcolor = "#F0EFF4"
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+
+    async def on_toast_largo(e):
+        await show_toast(page, "¡Operación completada! Los cambios se han guardado.", duration=10)
+ 
+    async def on_toast_corto(e):
+        await show_toast(page, "Archivo eliminado.", duration=4)
+ 
+    await page.add(
+        ft.Column(
+            controls=[
+                ft.Text("Demo: Ventana Flotante", size=22, weight=ft.FontWeight.BOLD, color="#1C1C2E"),
+                ft.Text("Haz clic para mostrar el toast", size=13, color="#666"),
+                ft.Button(
+                    "Mostrar Toast (10 seg)",
+                    on_click=on_toast_largo,
+                    style=ft.ButtonStyle(
+                        bgcolor="#6C63FF",
+                        color="#FFFFFF",
+                        shape=ft.RoundedRectangleBorder(radius=10),
+                        padding=ft.padding.symmetric(horizontal=24, vertical=14),
+                    ),
+                ),
+                ft.Button(
+                    "Toast corto (4 seg)",
+                    on_click=on_toast_corto,
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=10),
+                        padding=ft.Padding.symmetric(horizontal=24, vertical=14),
+                    ),
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=16,
+        )
+    )
+ 
+
+
+ft.run(main)
