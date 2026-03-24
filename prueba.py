@@ -1,30 +1,57 @@
-import flet as ft 
-from flet import TextField
+import flet as ft
 
-def main(page: ft.Page) -> None:
-    page.title = "Hábitos"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.theme_mode = "dark"
+class HabitCard(ft.Container):
+    def __init__(
+        self,
+        color: str = ft.Colors.BLUE,
+        completed: bool = False,
+        on_complete=None,
+        on_edit=None,
+    ):
+        super().__init__(...)
+        self.color = color
+        self.completed = completed
+        self.on_complete = on_complete
+        self.on_edit = on_edit
 
-    text_number: TextField = TextField(value="0", text_align=ft.TextAlign.RIGHT, width=100)
+        self._drag_offset = 0.0
+        self._SWIPE_THRESHOLD = 80      # px para confirmar completado
+        self._EDIT_THRESHOLD = -60      # px para revelar editar
 
-    def decrement(e: ft.ControlEvent) -> None:
-        text_number.value = str(int(text_number.value) - 1)
-        page.update()
-
-    def increment(e: ft.ControlEvent) -> None:
-        text_number.value = str(int(text_number.value) + 1)
-        page.update()
-
-    page.add(
-        ft.Row(
-            [ft.IconButton(ft.Icons.REMOVE, on_click=decrement), 
-             text_number, 
-             ft.IconButton(ft.Icons.ADD, on_click=increment)
-            ],
-            alignment=ft.MainAxisAlignment.CENTER
+    # ── Drag handlers ──────────────────────────────────────────
+    def _on_drag_update(self, e: ft.DragUpdateEvent):
+        self._drag_offset += e.global_delta.x
+        self._drag_offset = max(-80, min(120, self._drag_offset))
+        self._card_container.offset = ft.Offset(
+            self._drag_offset / 400, 0
         )
-    )
+        self._update_background_hint()
+        self.update()
 
-if __name__ == "__main__":
-    ft.run(target=main, view=ft.AppView.WEB_BROWSER)
+    def _update_background_hint(self):
+        # Fondo verde al deslizar derecha
+        self._bg_right.opacity = min(1.0, self._drag_offset / self._SWIPE_THRESHOLD) if self._drag_offset > 0 else 0
+        # Fondo naranja al deslizar izquierda
+        self._bg_left.opacity = min(1.0, abs(self._drag_offset) / abs(self._EDIT_THRESHOLD)) if self._drag_offset < 0 else 0
+
+    def _on_drag_end(self, e: ft.DragEndEvent):
+        if self._drag_offset >= self._SWIPE_THRESHOLD:
+            self._mark_complete()
+        elif self._drag_offset <= self._EDIT_THRESHOLD:
+            self._show_edit()
+
+        # Vuelve a la posición original
+        self._drag_offset = 0.0
+        self._card_container.offset = ft.Offset(0, 0)
+        self._bg_right.opacity = 0
+        self._bg_left.opacity = 0
+        self.update()
+    
+    # ── Build ──────────────────────────────────────────────────
+    def build(self):
+def main(page: ft.Page) -> None:
+    page.title = "Keyboard"
+    page.spacing = 30 
+    page.vertical_alignment = "center"
+    page.horizontal_alignment = "center"
+    page.bgcolor = "white"

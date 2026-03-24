@@ -1,4 +1,5 @@
 import flet as ft
+
 class HabitCard(ft.Container):
     def __init__(
         self,
@@ -183,26 +184,3 @@ class HabitCard(ft.Container):
             controls=[self._bg_right, self._bg_left, self.gesture],
             height=84,
         )
-    
-
-def main(page: ft.Page) -> None:
-    page.title = "Keyboard"
-    page.spacing = 30 
-    page.vertical_alignment = "center"
-    page.horizontal_alignment = "center"
-    page.bgcolor = "white"
-
-    calendario = HabitCard(
-        name="Meditar",
-        icon="🧘",
-        streak=12,
-        frequency="Diario",
-        reminder_time="08:00",
-        color=ft.Colors.PURPLE_400,
-        on_complete=lambda completed: print(f"Completado: {completed}"),
-        on_edit=lambda: print("Abrir edición"),
-    )
-    page.add(calendario.build())
-
-if __name__ == "__main__":
-    ft.run(main, view=ft.AppView.WEB_BROWSER)
