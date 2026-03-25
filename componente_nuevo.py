@@ -1,6 +1,6 @@
 import flet as ft
-import asyncio
 import threading
+import asyncio
 
 
 def show_toast(page: ft.Page, message: str, duration: int = 10):
@@ -81,60 +81,68 @@ def show_toast(page: ft.Page, message: str, duration: int = 10):
         expand=True,
     )
 
-    dismissed = False
-
+    # Animar entrada
+    toast.opacity = 1
+    toast.offset = ft.Offset(0, 0)
+    progress_bar.value = 0
+        
+    ventana_cerrada = False
     async def dismiss_toast():
-        nonlocal dismissed
-        if dismissed:
-            return
-        dismissed = True
- 
+        nonlocal ventana_cerrada 
+
+        if ventana_cerrada:
+            return 
+
+        ventana_cerrada = True 
+
         toast.opacity = 0
-        toast.offset = ft.transform.Offset(0, 0.5)
+        toast.offset = ft.Offset(0, 0.5)
         progress_bar.opacity = 0
-        await page.update_async()
- 
-        await asyncio.sleep(0.45)
- 
+        
+        page.update()
+
+        await asyncio.sleep(0.4)
+
         if overlay in page.overlay:
             page.overlay.remove(overlay)
-            await page.update_async()
-
-        # Asignar el botón de cerrar aquí para capturar dismiss_toast en el closure
-        toast.content.controls[2].on_click = lambda e: asyncio.ensure_future(dismiss_toast())
-    
-        page.overlay.append(overlay)
-        await page.update_async()
-    
-        # Pequeño delay para que el frame inicial se pinte antes de animar
-        await asyncio.sleep(0.05)
-    
-        # Animar entrada
-        toast.opacity = 1
-        toast.offset = ft.transform.Offset(0, 0)
-        progress_bar.value = 0
-        await page.update_async()
-    
-        # Esperar la duración y luego desaparecer
+            page.update()
+        
+        
+    async def dismiss_por_tiempo():
         await asyncio.sleep(duration)
-        await dismiss_toast()
+        await dismiss_toast() 
 
+    async def dismiss_por_cancel(e):
+        page.run_task(dismiss_toast)
+
+    
+    
+
+    # Asignar el botón de cerrar aquí para capturar dismiss_toast en el closure
+    toast.content.controls[2].on_click = dismiss_por_cancel
+    page.run_task(dismiss_por_tiempo)
+
+    page.overlay.append(overlay)
+    page.update()
+    
+   
+        
 
 # ─── Demo ────────────────────────────────────────────────────────────────────
 
-async def main(page: ft.Page):
+def main(page: ft.Page):
     page.title = "Toast Flotante"
     page.bgcolor = "#F0EFF4"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    async def on_toast_largo(e):
-        await show_toast(page, "¡Operación completada! Los cambios se han guardado.", duration=10)
+    def on_toast_largo(e):
+        show_toast(page, "¡Operación completada! Los cambios se han guardado.", duration=10)
  
-    async def on_toast_corto(e):
-        await show_toast(page, "Archivo eliminado.", duration=4)
+    def on_toast_corto(e):
+        show_toast(page, "Archivo eliminado.", duration=4)
  
-    await page.add(
+    page.add(
         ft.Column(
             controls=[
                 ft.Text("Demo: Ventana Flotante", size=22, weight=ft.FontWeight.BOLD, color="#1C1C2E"),
@@ -146,7 +154,7 @@ async def main(page: ft.Page):
                         bgcolor="#6C63FF",
                         color="#FFFFFF",
                         shape=ft.RoundedRectangleBorder(radius=10),
-                        padding=ft.padding.symmetric(horizontal=24, vertical=14),
+                        padding=ft.Padding.symmetric(horizontal=24, vertical=14),
                     ),
                 ),
                 ft.Button(
