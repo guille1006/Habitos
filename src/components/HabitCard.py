@@ -1,35 +1,45 @@
 import flet as ft
+from dataclasses import dataclass
+
+from ..utils.theme import apply_theme, LIGHT_THEME
+
+
+@dataclass
+class HabitData:
+    name: str
+    icon: str
+    streak: int
+    frequency: str
+    reminder_time: str | None = None
+    completed: bool = False
+
 
 class HabitCard(ft.Container):
     def __init__(
         self,
-        name: str,
-        icon: str,
-        streak: int,
-        frequency: str,
-        reminder_time: str | None,
-        color: str = ft.Colors.BLUE,
-        completed: bool = False,
+        habit: HabitData,
+        theme: ft.Theme,
         on_complete=None,
         on_edit=None,
     ):
-        super().__init__(...)
-        self.name = name
-        self.icon = icon
-        self.streak = streak
-        self.frequency = frequency
-        self.reminder_time = reminder_time
-        self.color = color
-        self.completed = completed
+        super().__init__()
+
+        self.habit = habit
+        self.app_theme = theme
+
+        self.t = theme
+        self.c = theme.c
+        self.sp = theme.sp
+        self.ty = theme.ty
+
         self.on_complete = on_complete
         self.on_edit = on_edit
 
         self._drag_offset = 0.0
-        self._SWIPE_THRESHOLD = 80      # px para confirmar completado
-        self._EDIT_THRESHOLD = -60      # px para revelar editar
+        self._SWIPE_THRESHOLD = 80
+        self._EDIT_THRESHOLD = -60
 
     # ── Drag handlers ──────────────────────────────────────────
-
     def _on_drag_update(self, e: ft.DragUpdateEvent):
         # Limita el arrastre: derecha hasta 120px, izquierda hasta -80px
         self._drag_offset += e.local_delta.x
@@ -59,43 +69,117 @@ class HabitCard(ft.Container):
         # Fondo naranja al deslizar izquierda
         self._bg_left.opacity = min(1.0, abs(self._drag_offset) / abs(self._EDIT_THRESHOLD)) if self._drag_offset < 0 else 0
 
+    # ── Background Creation ────────────────────────────────────
+    def _bg_card(self, 
+                 text: str, 
+                 color: ft.Colors, 
+                 icon: ft.Icons, 
+                 alignment: ft.Alignment) -> ft.Container:
+        """
+        Funcion que devuleve el fondo de las cartas
+        """
+        return ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(icon, # Icono
+                            color=self.c.text_primary, 
+                            size=self.ty.size_md),
+                    ft.Text(text, # Texto
+                            color=self.c.text_primary,
+                            font_family=self.ty.family,
+                            size=self.ty.size_base,
+                            weight=self.ty.bold),
+                ],
+                spacing=self.sp.md,
+            ),
+            bgcolor=color,      # Aqui pongo el color del fondo
+            border_radius= self.sp.radius_md,
+            padding=ft.Padding.symmetric(horizontal=20),
+            alignment=alignment,
+            opacity=0,
+            animate_opacity=150,
+        )
     # ── Build ──────────────────────────────────────────────────
     def build(self):
         # Fondo que aparece al deslizar a la derecha (completar)
-        self._bg_right = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, color=ft.Colors.WHITE, size=28),
-                    ft.Text("Completado", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                ],
-                spacing=8,
+        self._bg_right = self._bg_card(text="Completado",
+                                       color=ft.Colors.GREEN,
+                                       icon=ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED,
+                                       alignment=ft.Alignment(-1, 0))
+        
+        # Fondo que aparece al deslizar a la izquierda (editar)
+        self._bg_left = self._bg_card(text="Editar",
+                                       color=ft.Colors.YELLOW,
+                                       icon=ft.Icons.EDIT_ROUNDED,
+                                       alignment=ft.Alignment(1, 0))
+        
+        
+        card_content = ft.Container(
+            expand=True,
+            content=ft.Text(
+                self.habit.name,
+                weight=ft.FontWeight.W_600,
+                color=ft.Colors.ON_SURFACE,
             ),
-            bgcolor=ft.Colors.GREEN_400,
+            bgcolor=ft.Colors.with_opacity(0.05 if self.habit.completed else 0, ft.Colors.ON_SURFACE)
+            if self.habit.completed
+            else ft.Colors.SURFACE,
             border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=20),
-            alignment=ft.Alignment(-1, 0),
-            opacity=0,
-            animate_opacity=150,
+            padding=ft.Padding.symmetric(horizontal=16, vertical=14),
+            border=ft.Border.all(
+                1,
+                ft.Colors.with_opacity(0.3, self.c.accent)
+                if self.habit.completed
+                else ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
+            ),
+            animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
         )
 
-        # Fondo que aparece al deslizar a la izquierda (editar)
-        self._bg_left = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text("Editar", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                    ft.Icon(ft.Icons.EDIT_ROUNDED, color=ft.Colors.WHITE, size=28),
-                ],
-                spacing=8,
-                alignment=ft.MainAxisAlignment.END,
-            ),
-            bgcolor=ft.Colors.ORANGE_400,
-            border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=20),
-            alignment=ft.Alignment(1, 0),
-            opacity=0,
-            animate_opacity=150,
+        self._card_container = ft.Container(
+            expand=True,
+            content=card_content,
+            offset=ft.Offset(0, 0),
+            animate_offset=ft.Animation(300, ft.AnimationCurve.EASE_OUT)
         )
-        # Contenido principal de la tarjeta
+
+        self.gesture = ft.GestureDetector(
+            content=self._card_container,
+            on_horizontal_drag_update=self._on_drag_update,
+            on_horizontal_drag_end=self._on_drag_end,
+            # mouse_cursor=ft.MouseCursor.MOVE
+        )
+
+        return ft.Stack(
+            controls=[self._bg_right, self._bg_left, self.gesture],
+            height=84,
+        )
+    
+
+if __name__ == "__main__":
+    def main(page: ft.Page) -> None:
+        apply_theme(page=page, app_theme=LIGHT_THEME)
+
+        habit_data = HabitData(name="Leer 30 minutos",
+        icon="📚",
+        streak=7,
+        frequency="Diario",
+        reminder_time="21:00",
+        completed=False)
+
+        card = HabitCard(
+        habit=habit_data,
+        theme=LIGHT_THEME,
+        on_complete=lambda: print("completado"),
+        on_edit=lambda: print("editar"),
+        )
+
+        page.add(card.build())
+
+    ft.run(main)
+
+"""
+Para un futuro poner mas contenido a la carta:
+# Contenido principal de la tarjeta
         icon_container = ft.Container(
             content=ft.Text(self.icon, size=28),
             bgcolor=ft.Colors.with_opacity(0.15, self.color),
@@ -115,7 +199,7 @@ class HabitCard(ft.Container):
 
         frequency_badge = ft.Container(
             content=ft.Text(self.frequency, size=11, color=self.color, weight=ft.FontWeight.W_500),
-            bgcolor=ft.Colors.with_opacity(0.12, self.color),
+            bgcolor=self.c.bg,
             border_radius=20,
             padding=ft.Padding.symmetric(horizontal=8, vertical=2),
         )
@@ -149,39 +233,4 @@ class HabitCard(ft.Container):
             color=self.color if self.completed else ft.Colors.with_opacity(0.3, ft.Colors.ON_SURFACE),
             size=26
         )
-
-        card_content = ft.Container(
-            content=ft.Row(
-                controls=[icon_container, info_column, check_icon],
-                spacing=14,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            bgcolor=ft.Colors.with_opacity(0.05 if self.completed else 0, ft.Colors.ON_SURFACE)
-            if self.completed
-            else ft.Colors.SURFACE,
-            border_radius=16,
-            padding=ft.Padding.symmetric(horizontal=16, vertical=14),
-            border=ft.Border.all(
-                1,
-                ft.Colors.with_opacity(0.3, self.color) if self.completed else ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
-            ),
-            animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT)
-        )
-
-        self._card_container = ft.Container(
-            content=card_content,
-            offset=ft.Offset(0, 0),
-            animate_offset=ft.Animation(300, ft.AnimationCurve.EASE_OUT)
-        )
-
-        self.gesture = ft.GestureDetector(
-            content=self._card_container,
-            on_horizontal_drag_update=self._on_drag_update,
-            on_horizontal_drag_end=self._on_drag_end,
-            mouse_cursor=ft.MouseCursor.MOVE
-        )
-
-        return ft.Stack(
-            controls=[self._bg_right, self._bg_left, self.gesture],
-            height=84,
-        )
+"""

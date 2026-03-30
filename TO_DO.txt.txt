@@ -1,6 +1,5 @@
 Componentes de UI reutilizables (components/)
 
-habit_card.py — tarjeta individual de un hábito, muestra nombre, icono, racha y el check de hoy
 habit_form.py — formulario para crear/editar un hábito (nombre, frecuencia, color, icono)
                             progress_ring.py — círculo de progreso visual (% de hábitos completados hoy)
 streak_badge.py — badge que muestra la racha de días consecutivos
