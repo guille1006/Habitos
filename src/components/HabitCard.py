@@ -1,31 +1,20 @@
 import flet as ft
-from dataclasses import dataclass
 
-from ..utils.theme import apply_theme, LIGHT_THEME
-
-
-@dataclass
-class HabitData:
-    name: str
-    icon: str
-    streak: int
-    frequency: str
-    reminder_time: str | None = None
-    completed: bool = False
+from ..models.habit_data import HabitData
+from ..utils.theme import AppTheme, apply_theme, LIGHT_THEME
 
 
 class HabitCard(ft.Container):
     def __init__(
         self,
         habit: HabitData,
-        theme: ft.Theme,
+        theme: AppTheme,
         on_complete=None,
         on_edit=None,
     ):
         super().__init__()
 
         self.habit = habit
-        self.app_theme = theme
 
         self.t = theme
         self.c = theme.c
