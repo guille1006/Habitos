@@ -91,11 +91,13 @@ class HabitCard(ft.Container):
                             weight=self.ty.bold),
                 ],
                 spacing=self.sp.md,
+                alignment=alignment
             ),
+            expand=True,
+            alignment=ft.Alignment(0,0),
             bgcolor=color,      # Aqui pongo el color del fondo
             border_radius= self.sp.radius_md,
             padding=ft.Padding.symmetric(horizontal=20),
-            alignment=alignment,
             opacity=0,
             animate_opacity=150,
         )
@@ -105,17 +107,18 @@ class HabitCard(ft.Container):
         self._bg_right = self._bg_card(text="Completado",
                                        color=ft.Colors.GREEN,
                                        icon=ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED,
-                                       alignment=ft.Alignment(-1, 0))
+                                       alignment=ft.MainAxisAlignment.START)
         
         # Fondo que aparece al deslizar a la izquierda (editar)
         self._bg_left = self._bg_card(text="Editar",
                                        color=ft.Colors.YELLOW,
                                        icon=ft.Icons.EDIT_ROUNDED,
-                                       alignment=ft.Alignment(1, 0))
-        
+                                       alignment=ft.MainAxisAlignment.END)
+
         
         card_content = ft.Container(
             expand=True,
+            alignment=ft.Alignment.CENTER,
             content=ft.Text(
                 self.habit.name,
                 weight=ft.FontWeight.W_600,
@@ -143,6 +146,7 @@ class HabitCard(ft.Container):
         )
 
         self.gesture = ft.GestureDetector(
+            expand=True,
             content=self._card_container,
             on_horizontal_drag_update=self._on_drag_update,
             on_horizontal_drag_end=self._on_drag_end,
@@ -151,7 +155,7 @@ class HabitCard(ft.Container):
 
         return ft.Stack(
             controls=[self._bg_right, self._bg_left, self.gesture],
-            height=84,
+            height=50,
         )
     
 
